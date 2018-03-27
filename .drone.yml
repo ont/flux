@@ -1,0 +1,20 @@
+# vim: ts=2:sts=2:sw=2:expandtab:smarttab:
+
+pipeline:
+  build:
+    image: andrexus/golang-dep
+    commands:
+      - export GOPATH=$(pwd)
+      - cd src/flux
+      - dep ensure -vendor-only
+      - go build
+
+  publish-docker:
+    image: plugins/docker
+    repo: ontrif/flux
+    tag:
+      - latest
+      - ${DRONE_TAG}
+    when:
+      event: tag
+    secrets: [ docker_username, docker_password ]
