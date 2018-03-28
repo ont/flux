@@ -9,7 +9,7 @@ import (
 var (
 	verbose     = kingpin.Flag("verbose", "Verbose mode.").Short('v').Bool()
 	debugConfig = kingpin.Flag("debug-config", "Print debug ouput of parsed config").Short('d').Bool()
-	config      = kingpin.Arg("config", "Config file").Required().File()
+	config      = kingpin.Flag("config", "Config file").Short('c').Default("/etc/flux.conf").File()
 )
 
 func main() {
