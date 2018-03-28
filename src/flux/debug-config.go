@@ -17,7 +17,7 @@ func PrintConfig(grammar *Grammar, debugConfig, verbose bool) {
 		for _, route := range grammar.Routes {
 			total += len(route.Metrics)
 		}
-		log.Infof("Loaded config with %s routes and %s metrics total", len(grammar.Routes), total)
+		log.Infof("Loaded config with %d routes and %d metrics total", len(grammar.Routes), total)
 	}
 }
 
