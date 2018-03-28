@@ -35,7 +35,7 @@ func (w *Worker) Start() {
 			w.Process(line)
 
 		case <-tick:
-			w.Flush() // send bulk query to elasticsearch every tick event
+			w.Flush() // send bulk query to influx every tick event
 		}
 	}
 }
@@ -156,7 +156,7 @@ func (w *Worker) AddPoint(metric *Metric, tags map[string]string, values map[str
 }
 
 func (w *Worker) Flush() {
-	log.WithField("count", len(w.batch.Points())).Debug("flushing to elastic search")
+	log.WithField("count", len(w.batch.Points())).Debug("flushing to influx")
 
 	if err := w.client.Write(w.batch); err != nil {
 		log.WithError(err).Error("can't write batch to influx, dropping batch...")
