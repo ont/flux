@@ -25,8 +25,11 @@ func main() {
 
 	PrintConfig(grammar, *debugConfig, *verbose)
 
+	rootConsumer := NewRootConsumer(app)
+
 	for _, route := range grammar.Routes {
-		queue := NewConsumer(app, route)
+		consumer, queue := NewConsumer(app, route)
+		rootConsumer.AddConsumer(route.Name, consumer)
 
 		workers := NewWorkers(queue, route.Metrics)
 		for _, worker := range workers {

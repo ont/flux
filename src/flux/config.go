@@ -9,18 +9,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewConsumer(app *iris.Application, route *Route) chan *LogMessage {
+func NewRootConsumer(app *iris.Application) *RootConsumer {
+	consumer := &RootConsumer{
+		BaseConsumer: BaseConsumer{
+			HostFieldName:    GetenvStr("FLUX_HOST_FIELD_NAME", "HOST"),       // default value as in syslog message
+			MessageFieldName: GetenvStr("FLUX_MESSAGE_FIELD_NAME", "MESSAGE"), // ...
+		},
+		RouteFieldName: GetenvStr("FLUX_ROUTE_FIELD_NAME", "ROUTE"),
+		consumers:      make(map[string]*Consumer),
+	}
+
+	app.Post("/", consumer.Handle)
+
+	return consumer
+}
+
+func NewConsumer(app *iris.Application, route *Route) (*Consumer, chan *LogMessage) {
 	queue := make(chan *LogMessage, GetenvInt("FLUX_INTERNAL_BUFFER", 1000))
 
 	consumer := &Consumer{
-		HostFieldName:    GetenvStr("FLUX_HOST_FIELD_NAME", "HOST"),       // default value as in syslog message
-		MessageFieldName: GetenvStr("FLUX_MESSAGE_FIELD_NAME", "MESSAGE"), // ...
-		queue:            queue,
+		BaseConsumer: BaseConsumer{
+			HostFieldName:    GetenvStr("FLUX_HOST_FIELD_NAME", "HOST"),       // default value as in syslog message
+			MessageFieldName: GetenvStr("FLUX_MESSAGE_FIELD_NAME", "MESSAGE"), // ...
+		},
+		queue: queue,
 	}
 
 	app.Post(route.Name, consumer.Handle)
 
-	return queue
+	return consumer, queue
 }
 
 func NewWorkers(queue chan *LogMessage, metrics []*Metric) []*Worker {
