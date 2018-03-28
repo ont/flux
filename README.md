@@ -95,11 +95,98 @@ sync-gateway,host=some-host query_time=123.456 query_rows=12345
 ```
 
 ## Sending logs to flux
-Each log can be sended in POST to registred route line-by-line.
+Each log can be send in POST to registred route line-by-line.
 Example:
 ```
 curl -XPOST localhost:8080/nginx --data-binary @- <<EOF
 {"HOST": "babycare1", "MESSAGE": "2015/11/16 21:15:21 [error] 1208#0: *4894044 upstream timed out ..."}
 {"HOST": "babycare1", "MESSAGE": "2015/11/16 21:15:21 [error] 1208#0: *4894044 upstream timed out ..."}
 EOF
+```
+
+## Special "/" route
+Flux also has special root route `/` which can consume all messages. It is especially usefull when using flux with syslog-ng.
+
+Message for this route must have additional "route" field (`ROUTE` by default, but can be configured with `FLUX_ROUTE_FIELD_NAME` env var).
+
+Example of message
+```
+{
+    "HOST": "some-host",
+    "MESSAGE": "some log message with tag value "bla-bla-bla" to parse with value=568.7",
+    "ROUTE": "sync-gateway"
+}
+```
+
+Send it with
+```
+curl -XPOST localhost:8080/ --data-binary @- <<EOF
+{ "HOST": "some-host", "MESSAGE": "some log message with tag value "bla-bla-bla" to parse with value=568.7", "ROUTE": "sync-gateway" }
+EOF
+```
+
+This message will be processed with metrics from `sync-gateway` route from config.
+
+## How to use with syslog-ng
+Example config for syslog-ng which listen for rfc5424 (non-json) log messages on port 5555 and sends sync-gateway related messages to flux:
+
+```
+@version: 3.14
+@include "scl.conf"
+
+options { 
+    chain-hostnames(off); 
+    #use-dns(no); 
+    #use-fqdn(no);
+    log-msg-size(32768);
+};
+
+source s_net {
+    ## rfc5424 with frames which works with "logger" system utility
+    network(transport("tcp") port("5555") flags(syslog-protocol));
+};
+
+destination d_flux {
+    http(
+        url("localhost:8080/")
+        method("POST")
+        body("$(format-json --key HOST,MESSAGE,ROUTE)")
+    );
+};
+
+destination d_backup { file("/mnt/logs/all-${YEAR}-${MONTH}-${DAY}.log"); };
+
+filter f_flux { tags("flux"); };
+
+## sync-gateway related filter + rewrite
+filter f_sg { program('sync-gateway'); };
+rewrite r_sg {
+    set-tag("flux");
+    set("sync-gateway", value("ROUTE"));
+};
+
+
+log {
+    ## 0. recieve logs from rfc5424 source
+    source(s_net);
+
+    ## 1. normalize: extract fields, parse json, transfrom message...
+    junction {
+        channel { filter(f_sg); rewrite(r_sg); flags(final); };
+        # channel { parser(p_json); rewrite(r_json); flags(final); };
+        # channel { rewrite(r_plain); flags(final); };
+    };
+
+    ## 2. backup all logs to disk
+    destination(d_backup);
+
+    ## 3. log any message to elasticsearch (SEE: github.com/ont/stick)
+    # destination(d_stick);
+
+    ## 4. send metrics to influx
+    log {
+        filter(f_flux);
+        destination(d_flux);
+    };
+};
 ```
