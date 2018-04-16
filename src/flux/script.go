@@ -33,10 +33,11 @@ func NewScript(source string) *Script {
 	}
 }
 
-func (s *Script) Process() error {
+func (s *Script) Process(message string) error {
 	s.vm.Set("tags", s.Tags)
 	s.vm.Set("values", s.Values)
 	s.vm.Set("data", s.Data)
+	s.vm.Set("message", message)
 
 	_, err := s.vm.RunProgram(s.program)
 	return err

@@ -71,7 +71,7 @@ func (w *Worker) Process(message *LogMessage) {
 			}
 
 			if metric.script != nil {
-				tags, values, err = w.ProcessScript(metric.script, tags, values, data)
+				tags, values, err = w.ProcessScript(metric.script, message.Message, tags, values, data)
 				if err != nil {
 					break
 				}
@@ -139,11 +139,11 @@ func (w *Worker) GetTagsValues(logMessage string, metric *Metric, matches []stri
 	return tags, values, data, nil
 }
 
-func (w *Worker) ProcessScript(script *Script, tags PointTags, values, data PointValues) (PointTags, PointValues, error) {
+func (w *Worker) ProcessScript(script *Script, message string, tags PointTags, values, data PointValues) (PointTags, PointValues, error) {
 	script.Tags = tags
 	script.Values = values
 	script.Data = data
-	err := script.Process()
+	err := script.Process(message)
 	return script.Tags, script.Values, err
 }
 
