@@ -45,3 +45,26 @@ func printGrammar(grammar *Grammar, verbose bool) {
 		}
 	}
 }
+
+func testRegexps(grammar *Grammar, data string) {
+	for _, route := range grammar.Routes {
+		fmt.Printf("== Route \"%s\"\n", route.Name)
+		for _, metric := range route.Metrics {
+			fmt.Printf("    --> Metric \"%s\"\n", metric.Name)
+
+			matches := metric.re.FindStringSubmatch(data)
+			if len(matches) > 0 {
+				fmt.Printf("    [MATCH] \"%s\" --> %s\n", metric.Name, metric.re.String())
+				for n, match := range matches {
+					name := metric.re.SubexpNames()[n]
+					if name == "" {
+						name = fmt.Sprintf("group_%d", n)
+					}
+					fmt.Printf("           %10s --> %s\n", name, match)
+				}
+			} else {
+				fmt.Printf("    [     ] \"%s\" --> %s\n", metric.Name, metric.re.String())
+			}
+		}
+	}
+}
