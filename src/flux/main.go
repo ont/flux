@@ -28,7 +28,7 @@ func main() {
 
 	PrintConfig(grammar, *debugConfig, *verbose)
 
-	if test != nil {
+	if *test != "" {
 		testRegexps(grammar, *test)
 		os.Exit(0)
 	}
