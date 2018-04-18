@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/alecthomas/participle"
+	"github.com/mohae/deepcopy"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,20 +38,10 @@ func NewGrammar(reader io.Reader) *Grammar {
 	parser := participle.MustBuild(&Grammar{}, nil)
 	parser.Parse(reader, &grammar)
 
-	grammar.Prepare()
-
 	return &grammar
 }
 
-func (g *Grammar) Prepare() {
-	for _, route := range g.Routes {
-		for _, metric := range route.Metrics {
-			metric.prepareParams()
-		}
-	}
-}
-
-func (m *Metric) prepareParams() {
+func (m *Metric) unpackParams() {
 	reStr := m.Get("regexp")
 	if reStr == "" {
 		log.Fatal("empty or missed regexp for metric")
@@ -59,12 +50,21 @@ func (m *Metric) prepareParams() {
 	m.re = regexp.MustCompile(reStr)
 
 	m.eventName = m.Get("event")
-}
 
-func (m *Metric) prepareScript() {
 	if script := m.Get("script"); script != "" {
 		m.script = NewScript(script)
 	}
+}
+
+func (m *Metric) Clone() *Metric {
+	clone, ok := deepcopy.Copy(m).(*Metric)
+	if !ok {
+		log.Fatal("can't do deepclone for metric")
+	}
+
+	clone.unpackParams()
+
+	return clone
 }
 
 func (m *Metric) Get(param string) string {

@@ -6,7 +6,6 @@ import (
 
 	influx "github.com/influxdata/influxdb/client/v2"
 	"github.com/kataras/iris"
-	"github.com/mohae/deepcopy"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -68,12 +67,7 @@ func NewWorker(queue chan *LogMessage, metrics []*Metric) *Worker {
 	// NOTE: this part fixes race-condition crashes during concurrent RunProgram on single goja.Runtime
 	cmetrics := make([]*Metric, 0)
 	for _, metric := range metrics {
-		cmetric, ok := deepcopy.Copy(metric).(*Metric)
-		if !ok {
-			log.Fatal("can't do deepclone for metric")
-		}
-		cmetric.prepareScript()
-		cmetrics = append(cmetrics, cmetric)
+		cmetrics = append(cmetrics, metric.Clone())
 	}
 
 	worker := &Worker{
