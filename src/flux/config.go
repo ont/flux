@@ -6,6 +6,7 @@ import (
 
 	influx "github.com/influxdata/influxdb/client/v2"
 	"github.com/kataras/iris"
+	"github.com/mohae/deepcopy"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -62,6 +63,19 @@ func NewWorker(queue chan *LogMessage, metrics []*Metric) *Worker {
 
 	commitInterval := GetenvInt("FLUX_COMMIT_INTERVAL", 5)
 
+	// Make clone of all metrics and compile their scripts.
+	// So every worker recieves non-shared goja.Runtime and goja.Program in metric.script
+	// NOTE: this part fixes race-condition crashes during concurrent RunProgram on single goja.Runtime
+	cmetrics := make([]*Metric, 0)
+	for _, metric := range metrics {
+		cmetric, ok := deepcopy.Copy(metric).(*Metric)
+		if !ok {
+			log.Fatal("can't do deepclone for metric")
+		}
+		cmetric.prepareScript()
+		cmetrics = append(cmetrics, cmetric)
+	}
+
 	worker := &Worker{
 		CommitInterval: time.Duration(commitInterval) * time.Second,
 		CommitAmount:   GetenvInt("FLUX_COMMIT_AMOUNT", 10),
@@ -69,7 +83,7 @@ func NewWorker(queue chan *LogMessage, metrics []*Metric) *Worker {
 
 		queue:   queue,
 		client:  client,
-		metrics: metrics,
+		metrics: cmetrics,
 	}
 
 	worker.CreateBatch()

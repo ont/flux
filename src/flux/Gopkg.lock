@@ -252,6 +252,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/mohae/deepcopy"
+  packages = ["."]
+  revision = "c48cc78d482608239f6c4c92a4abd87eb8761c90"
+
+[[projects]]
+  branch = "master"
   name = "github.com/ryanuber/columnize"
   packages = ["."]
   revision = "abc90934186a77966e2beeac62ed966aac0561d5"
@@ -358,6 +364,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "86d4ac8fb2147415d032aef1bd52ac385332f4d1e0002a74e132709b21fab47f"
+  inputs-digest = "1042250250dbe6bbbceb315d5660fc7e8a3e6b9e80a7fa403f10ae9f8e63b469"
   solver-name = "gps-cdcl"
   solver-version = 1

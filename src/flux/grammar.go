@@ -58,11 +58,13 @@ func (m *Metric) prepareParams() {
 
 	m.re = regexp.MustCompile(reStr)
 
+	m.eventName = m.Get("event")
+}
+
+func (m *Metric) prepareScript() {
 	if script := m.Get("script"); script != "" {
 		m.script = NewScript(script)
 	}
-
-	m.eventName = m.Get("event")
 }
 
 func (m *Metric) Get(param string) string {
