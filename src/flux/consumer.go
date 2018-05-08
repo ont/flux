@@ -6,7 +6,7 @@ import (
 )
 
 type Consumer struct {
-	queue chan *LogMessage
+	queue chan LogMessage
 
 	BaseConsumer
 }

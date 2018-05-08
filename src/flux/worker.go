@@ -14,7 +14,7 @@ type Worker struct {
 	CommitAmount   int
 	Database       string
 
-	queue   chan *LogMessage
+	queue   chan LogMessage
 	batch   influx.BatchPoints
 	client  influx.Client
 	metrics []*Metric
@@ -26,13 +26,13 @@ func (w *Worker) Start() {
 
 	for {
 		select {
-		case line, ok := <-w.queue:
+		case message, ok := <-w.queue:
 			if !ok {
 				w.Flush()
 				return // queue closed, we can exit
 			}
 
-			w.Process(line)
+			w.Process(message)
 
 		case <-tick:
 			w.Flush() // send bulk query to influx every tick event
@@ -53,14 +53,14 @@ func (w *Worker) CreateBatch() {
 	w.batch = batch
 }
 
-func (w *Worker) Process(message *LogMessage) {
+func (w *Worker) Process(message LogMessage) {
 	for _, metric := range w.metrics {
-		matches := metric.re.FindStringSubmatch(message.Message)
+		matches := metric.re.FindStringSubmatch(message.Message())
 		if len(matches) > 0 {
 
 			log.WithField("matches", matches).Debug("worker: found matches")
 
-			tags, values, data, err := w.GetTagsValues(message.Message, metric, matches)
+			tags, values, data, err := w.GetTagsValues(message.Message(), metric, matches)
 
 			log.WithField("tags", tags).
 				WithField("values", values).
@@ -71,7 +71,7 @@ func (w *Worker) Process(message *LogMessage) {
 			}
 
 			if metric.script != nil {
-				tags, values, err = w.ProcessScript(metric.script, message.Message, tags, values, data)
+				tags, values, err = w.ProcessScript(metric.script, message.Message(), tags, values, data)
 				if err != nil {
 					break
 				}
@@ -83,7 +83,7 @@ func (w *Worker) Process(message *LogMessage) {
 
 			// add hostname as tag to point
 			// NOTE: it overwrites any "tag_host" value from regexp and script
-			tags["host"] = message.Host
+			tags["host"] = message.Host()
 
 			log.WithField("tags", tags).
 				WithField("values", values).

@@ -11,12 +11,7 @@ import (
 
 func NewRootConsumer(app *iris.Application) *RootConsumer {
 	consumer := &RootConsumer{
-		BaseConsumer: BaseConsumer{
-			HostFieldName:    GetenvStr("FLUX_HOST_FIELD_NAME", "HOST"),       // default value as in syslog message
-			MessageFieldName: GetenvStr("FLUX_MESSAGE_FIELD_NAME", "MESSAGE"), // ...
-		},
-		RouteFieldName: GetenvStr("FLUX_ROUTE_FIELD_NAME", "ROUTE"),
-		consumers:      make(map[string]*Consumer),
+		consumers: make(map[string]*Consumer),
 	}
 
 	app.Post("/", consumer.Handle)
@@ -24,14 +19,10 @@ func NewRootConsumer(app *iris.Application) *RootConsumer {
 	return consumer
 }
 
-func NewConsumer(app *iris.Application, route *Route) (*Consumer, chan *LogMessage) {
-	queue := make(chan *LogMessage, GetenvInt("FLUX_INTERNAL_BUFFER", 1000))
+func NewConsumer(app *iris.Application, route *Route) (*Consumer, chan LogMessage) {
+	queue := make(chan LogMessage, GetenvInt("FLUX_INTERNAL_BUFFER", 1000))
 
 	consumer := &Consumer{
-		BaseConsumer: BaseConsumer{
-			HostFieldName:    GetenvStr("FLUX_HOST_FIELD_NAME", "HOST"),       // default value as in syslog message
-			MessageFieldName: GetenvStr("FLUX_MESSAGE_FIELD_NAME", "MESSAGE"), // ...
-		},
 		queue: queue,
 	}
 
@@ -40,7 +31,7 @@ func NewConsumer(app *iris.Application, route *Route) (*Consumer, chan *LogMessa
 	return consumer, queue
 }
 
-func NewWorkers(queue chan *LogMessage, metrics []*Metric) []*Worker {
+func NewWorkers(queue chan LogMessage, metrics []*Metric) []*Worker {
 	cnt := GetenvInt("FlUX_WORKERS", 2)
 	workers := make([]*Worker, 0, cnt)
 
@@ -51,7 +42,7 @@ func NewWorkers(queue chan *LogMessage, metrics []*Metric) []*Worker {
 	return workers
 }
 
-func NewWorker(queue chan *LogMessage, metrics []*Metric) *Worker {
+func NewWorker(queue chan LogMessage, metrics []*Metric) *Worker {
 	client, err := influx.NewHTTPClient(influx.HTTPConfig{
 		Addr: os.Getenv("FLUX_INFLUX_URL"), //"http://localhost:8086"
 	})
