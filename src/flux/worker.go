@@ -81,9 +81,10 @@ func (w *Worker) Process(message LogMessage) {
 					Debug("worker: parsed tags and values after script")
 			}
 
-			// add hostname as tag to point
-			// NOTE: it overwrites any "tag_host" value from regexp and script
+			// add hostname and program as tag to influx point
+			// NOTE: it overwrites any "tag_host" and "tag_program" value from regexp and script
 			tags["host"] = message.Host()
+			tags["program"] = message.Program()
 
 			log.WithField("tags", tags).
 				WithField("values", values).
