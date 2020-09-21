@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -46,7 +46,7 @@ func printGrammar(grammar *Grammar, verbose bool) {
 	}
 }
 
-func testRegexps(grammar *Grammar, data string) {
+func TestRegexps(grammar *Grammar, data string) {
 	for _, route := range grammar.Routes {
 		fmt.Printf("== Route \"%s\"\n", route.Name)
 		for _, metric := range route.Metrics {

@@ -1,7 +1,7 @@
-package main
+package server
 
 import (
-	"github.com/kataras/iris"
+	"github.com/kataras/iris/v12"
 	log "github.com/sirupsen/logrus"
 )
 

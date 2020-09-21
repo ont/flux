@@ -3,7 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/kataras/iris"
+	"flux/pkg/server"
+
+	"github.com/kataras/iris/v12"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -24,22 +26,22 @@ func main() {
 
 	app := iris.New()
 
-	grammar := NewGrammar(*config)
+	grammar := server.NewGrammar(*config)
 
-	PrintConfig(grammar, *debugConfig, *verbose)
+	server.PrintConfig(grammar, *debugConfig, *verbose)
 
 	if *test != "" {
-		testRegexps(grammar, *test)
+		server.TestRegexps(grammar, *test)
 		os.Exit(0)
 	}
 
-	rootConsumer := NewRootConsumer(app)
+	rootConsumer := server.NewRootConsumer(app)
 
 	for _, route := range grammar.Routes {
-		consumer, queue := NewConsumer(app, route)
+		consumer, queue := server.NewConsumer(app, route)
 		rootConsumer.AddConsumer(route.Name, consumer)
 
-		workers := NewWorkers(queue, route.Metrics)
+		workers := server.NewWorkers(queue, route.Metrics)
 		for _, worker := range workers {
 			go worker.Start()
 		}
@@ -50,7 +52,6 @@ func main() {
 		iris.WithoutServerError(iris.ErrServerClosed),
 		iris.WithOptimizations,
 		iris.WithoutBanner,
-		iris.WithoutVersionChecker,
 	)
 
 }

@@ -1,11 +1,11 @@
-package main
+package server
 
 import (
 	"os"
 	"time"
 
 	influx "github.com/influxdata/influxdb/client/v2"
-	"github.com/kataras/iris"
+	"github.com/kataras/iris/v12"
 	log "github.com/sirupsen/logrus"
 )
 

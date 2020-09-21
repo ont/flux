@@ -4,10 +4,7 @@ pipeline:
   build:
     image: andrexus/golang-dep
     commands:
-      - export GOPATH=$(pwd)
-      - cd src/flux
-      - dep ensure -vendor-only
-      - go build
+      - go build -o bin/server cmd/server/main.go
 
   publish-docker:
     image: plugins/docker
