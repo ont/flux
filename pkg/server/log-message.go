@@ -30,6 +30,10 @@ func (l LogMessage) Message() string {
 	return l.getFieldStr(MessageFieldName)
 }
 
+func (l LogMessage) MessageBytes() []byte {
+	return []byte(l.getFieldStr(MessageFieldName))
+}
+
 func (l LogMessage) Route() string {
 	return l.getFieldStr(RouteFieldName)
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"io"
 	"regexp"
+	"strings"
 
 	"github.com/alecthomas/participle"
 	"github.com/mohae/deepcopy"
@@ -22,6 +23,7 @@ type Metric struct {
 	Name   string   `"metric" @String "{"`
 	Params []*Param `{ @@  } "}"`
 
+	parseJSON bool
 	re        *regexp.Regexp
 	script    *Script
 	eventName string // name of event, i.e. name of special column in influx which will contain "1" value
@@ -43,16 +45,31 @@ func NewGrammar(reader io.Reader) *Grammar {
 
 func (m *Metric) unpackParams() {
 	reStr := m.Get("regexp")
-	if reStr == "" {
-		log.Fatal("empty or missed regexp for metric")
+	format := m.Get("format")
+
+	if reStr == "" && format == "" {
+		log.Fatal("empty or missed 'regexp' or 'format' fields in metric")
 	}
-
-	m.re = regexp.MustCompile(reStr)
-
-	m.eventName = m.Get("event")
 
 	if script := m.Get("script"); script != "" {
 		m.script = NewScript(script)
+	}
+
+	if reStr != "" {
+		m.re = regexp.MustCompile(reStr)
+
+		m.eventName = m.Get("event")
+
+	} else {
+		if format != "json" {
+			log.Fatalf("unsupported format: %s", format)
+		}
+
+		if m.script == nil {
+			log.Fatal("missing 'script' section; 'script' must be used for specifying tags and values from json")
+		}
+
+		m.parseJSON = true
 	}
 }
 
@@ -75,4 +92,14 @@ func (m *Metric) Get(param string) string {
 	}
 
 	return ""
+}
+
+func (m *Metric) GetBool(param string) bool {
+	for _, pobj := range m.Params {
+		if pobj.Key == param {
+			return strings.TrimSpace(strings.ToLower(pobj.Value)) == "true"
+		}
+	}
+
+	return false
 }

@@ -7,6 +7,7 @@ import (
 
 	influx "github.com/influxdata/influxdb/client/v2"
 	log "github.com/sirupsen/logrus"
+	"github.com/square/go-jose/v3/json"
 )
 
 type Worker struct {
@@ -55,50 +56,115 @@ func (w *Worker) CreateBatch() {
 
 func (w *Worker) Process(message LogMessage) {
 	for _, metric := range w.metrics {
-		matches := metric.re.FindStringSubmatch(message.Message())
-		if len(matches) > 0 {
+		var matched bool
+		var err error
 
-			log.WithField("matches", matches).Debug("worker: found matches")
+		// TODO: decompose processing logic into two structs:
+		//		MetricJson
+		//      MetricRegex
+		// ....
+		// TODO: AST must returns basic union type with
+		//      MetricAST.Parse() --> MetricInterface
+		// ....
+		//		MetricInterface.Process(message) --> bool, err
+		if metric.parseJSON {
+			matched, err = w.processJSON(metric, message)
+		} else {
+			matched, err = w.processRegex(metric, message)
+		}
 
-			tags, values, data, err := w.GetTagsValues(message.Message(), metric, matches)
+		if err != nil {
+			log.WithError(err).
+				WithField("message", message.Message()).
+				Error("error during parsing")
+		}
 
-			log.WithField("tags", tags).
-				WithField("values", values).
-				WithField("data", data).Debug("worker: parsed tags, values and data")
-
-			if err != nil {
-				break
-			}
-
-			if metric.script != nil {
-				tags, values, err = w.ProcessScript(metric.script, message.Message(), tags, values, data)
-				if err != nil {
-					break
-				}
-
-				log.WithField("tags", tags).
-					WithField("values", values).
-					Debug("worker: parsed tags and values after script")
-			}
-
-			// add hostname and program as tag to influx point
-			// NOTE: it overwrites any "tag_host" and "tag_program" value from regexp and script
-			tags["host"] = message.Host()
-			tags["program"] = message.Program()
-
-			log.WithField("tags", tags).
-				WithField("values", values).
-				Debug("worker: final tags and values for point")
-
-			w.AddPoint(metric, tags, values)
-
-			break // ignore any other metrics from config
+		if matched {
+			break // stop on first matched metric
 		}
 	}
 
 	if len(w.batch.Points()) >= w.CommitAmount {
 		w.Flush()
 	}
+}
+
+func (w *Worker) processJSON(metric *Metric, message LogMessage) (bool, error) {
+	log.Debug("worker: processing as json")
+
+	var data map[string]interface{}
+	err := json.Unmarshal(message.MessageBytes(), &data)
+	if err != nil {
+		return false, err
+	}
+
+	tags, values, err := w.ProcessScript(metric.script, message.Message(), PointTags{}, PointValues{}, data)
+	if err != nil {
+		return false, err
+	}
+
+	log.WithField("tags", tags).
+		WithField("values", values).
+		Debug("worker: parsed tags and values after script")
+
+	// add hostname and program as tag to influx point
+	// NOTE: it overwrites any "tag_host" and "tag_program" value from regexp and script
+	tags["host"] = message.Host()
+	tags["program"] = message.Program()
+
+	log.WithField("tags", tags).
+		WithField("values", values).
+		Debug("worker: final tags and values for point")
+
+	w.AddPoint(metric, tags, values)
+
+	return true, nil
+}
+
+func (w *Worker) processRegex(metric *Metric, message LogMessage) (bool, error) {
+	log.Debug("worker: processing as regex pattern")
+
+	matches := metric.re.FindStringSubmatch(message.Message())
+	if len(matches) > 0 {
+
+		log.WithField("matches", matches).Debug("worker: found matches")
+
+		tags, values, data, err := w.GetTagsValues(message.Message(), metric, matches)
+
+		log.WithField("tags", tags).
+			WithField("values", values).
+			WithField("data", data).Debug("worker: parsed tags, values and data")
+
+		if err != nil {
+			return false, err
+		}
+
+		if metric.script != nil {
+			tags, values, err = w.ProcessScript(metric.script, message.Message(), tags, values, data)
+			if err != nil {
+				return false, err
+			}
+
+			log.WithField("tags", tags).
+				WithField("values", values).
+				Debug("worker: parsed tags and values after script")
+		}
+
+		// add hostname and program as tag to influx point
+		// NOTE: it overwrites any "tag_host" and "tag_program" value from regexp and script
+		tags["host"] = message.Host()
+		tags["program"] = message.Program()
+
+		log.WithField("tags", tags).
+			WithField("values", values).
+			Debug("worker: final tags and values for point")
+
+		w.AddPoint(metric, tags, values)
+
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // GetTagsValues extracts tags, values and additional data from regexp match result
