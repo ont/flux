@@ -2,7 +2,7 @@
 
 pipeline:
   build:
-    image: andrexus/golang-dep
+    image: golang
     commands:
       - go build -o bin/server cmd/server/main.go
 
