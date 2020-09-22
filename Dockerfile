@@ -13,7 +13,7 @@ ENV FLUX_INFLUX_DB telegraf
 ENV FLUX_INFLUX_URL http://localhost:8086
 
 COPY example.conf /etc/flux.conf
-ADD ./src/flux/flux /flux
+ADD ./bin/server /server
 
 EXPOSE 8080
-ENTRYPOINT ["/flux"]
+ENTRYPOINT ["/server"]
