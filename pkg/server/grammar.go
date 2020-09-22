@@ -37,7 +37,7 @@ type Param struct {
 func NewGrammar(reader io.Reader) *Grammar {
 	var grammar Grammar
 
-	parser := participle.MustBuild(&Grammar{}, nil)
+	parser := participle.MustBuild(&Grammar{})
 	parser.Parse(reader, &grammar)
 
 	return &grammar
